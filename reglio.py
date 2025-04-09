@@ -19,6 +19,11 @@ class ChequeVirementApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Générateur de Documents Bancaires")
+        
+        # Initialize all StringVars FIRST
+        self.initialize_variables()
+        
+        # Then setup UI and other components
         self.setup_ui()
         self.load_config()
         self.register_fonts()
@@ -32,6 +37,39 @@ class ChequeVirementApp:
         self.cheque_layout = self.load_layout_config("cheque")
         self.letter_layout = self.load_layout_config("letter")
         self.virement_layout = self.load_layout_config("virement")
+
+    def initialize_variables(self):
+        """Initialize all Tkinter variables before UI setup"""
+        # Cheque Tab Variables
+        self.payee_var = tk.StringVar()
+        self.amount_var = tk.StringVar()
+        self.amount_words_var = tk.StringVar()
+        self.city_var = tk.StringVar()
+        self.date_var = tk.StringVar(value=datetime.now().strftime("%d/%m/%Y"))
+        
+        # Virement Tab Variables
+        self.virement_payee_var = tk.StringVar()
+        self.virement_amount_var = tk.StringVar()
+        self.virement_amount_words_var = tk.StringVar()
+        self.virement_type_var = tk.StringVar(value="Ordinaire")
+        self.virement_motif_var = tk.StringVar()
+        self.virement_rib_var = tk.StringVar()
+        self.virement_bank_var = tk.StringVar()
+        self.virement_city_var = tk.StringVar()
+        
+        # Lettre de Change Tab Variables
+        self.letter_payee_var = tk.StringVar()
+        self.letter_amount_var = tk.StringVar()
+        self.letter_amount_words_var = tk.StringVar()
+        self.letter_due_date_var = tk.StringVar()
+        self.letter_city_var = tk.StringVar()
+        self.letter_edition_date_var = tk.StringVar(value=datetime.now().strftime("%d/%m/%Y"))
+        self.letter_label_var = tk.StringVar()
+        
+        # Settings Tab Variables
+        self.font_var = tk.StringVar(value="Arial")
+        self.size_var = tk.IntVar(value=10)
+        self.preview_text_var = tk.StringVar(value="Exemple de texte")
 
     # ----------------------------
     # UI SETUP
