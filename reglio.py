@@ -30,6 +30,7 @@ class ChequeVirementApp:
         
         # Data storage
         self.payee_db = None
+        self.payee_list = []  # Store payee names for combobox
         self.virements_db_path = None
         self.template_path = None
         
@@ -37,6 +38,12 @@ class ChequeVirementApp:
         self.cheque_layout = self.load_layout_config("cheque")
         self.letter_layout = self.load_layout_config("letter")
         self.virement_layout = self.load_layout_config("virement")
+        
+        # Default cities
+        self.cities = ["Témara", "Rabat", "Casablanca", "Autre"]
+        self.city_var.set("Témara")
+        self.virement_city_var.set("Témara")
+        self.letter_city_var.set("Témara")
 
     def initialize_variables(self):
         """Initialize all Tkinter variables before UI setup"""
@@ -95,70 +102,150 @@ class ChequeVirementApp:
         self.notebook.add(tab, text="Chèque")
         
         # Fields
-        fields = [
-            ("Bénéficiaire:", "payee_var"),
-            ("Montant (#000 000,00):", "amount_var"),
-            ("Montant en lettres:", "amount_words_var", 40),
-            ("Ville:", "city_var"),
-            ("Date (jj/mm/aaaa):", "date_var")
-        ]
+        ttk.Label(tab, text="Bénéficiaire:").grid(row=0, column=0, sticky="e", padx=5, pady=5)
+        self.payee_cb = ttk.Combobox(tab, textvariable=self.payee_var, values=self.payee_list)
+        self.payee_cb.grid(row=0, column=1, sticky="ew")
+        self.payee_cb.bind('<KeyRelease>', self.filter_payees)
         
-        for i, (label, var, *extra) in enumerate(fields):
-            ttk.Label(tab, text=label).grid(row=i, column=0, sticky="e", padx=5, pady=5)
-            entry = ttk.Entry(tab, textvariable=getattr(self, var), width=extra[0] if extra else 20)
-            entry.grid(row=i, column=1, sticky="w")
+        ttk.Label(tab, text="Montant (#000 000,00):").grid(row=1, column=0, sticky="e", padx=5, pady=5)
+        self.amount_entry = ttk.Entry(tab, textvariable=self.amount_var, width=20)
+        self.amount_entry.grid(row=1, column=1, sticky="w")
+        self.amount_entry.bind('<FocusOut>', self.update_amount_fields)
         
-        ttk.Button(tab, text="Générer Chèque", command=self.generate_cheque).grid(row=len(fields), columnspan=2, pady=10)
+        ttk.Label(tab, text="Montant en lettres:").grid(row=2, column=0, sticky="e", padx=5, pady=5)
+        ttk.Entry(tab, textvariable=self.amount_words_var, width=40, state='readonly').grid(row=2, column=1, sticky="w")
+        
+        ttk.Label(tab, text="Ville:").grid(row=3, column=0, sticky="e", padx=5, pady=5)
+        ttk.Combobox(tab, textvariable=self.city_var, values=self.cities).grid(row=3, column=1, sticky="w")
+        
+        ttk.Label(tab, text="Date (jj/mm/aaaa):").grid(row=4, column=0, sticky="e", padx=5, pady=5)
+        ttk.Entry(tab, textvariable=self.date_var, width=20).grid(row=4, column=1, sticky="w")
+        
+        ttk.Button(tab, text="Générer Chèque", command=self.generate_cheque).grid(row=5, columnspan=2, pady=10)
+        
+        # Configure grid weights
+        tab.grid_columnconfigure(1, weight=1)
+    def filter_payees(self, event=None):
+    """Filter payees based on combobox input"""
+    typed = self.payee_var.get().lower()
+    if not typed:
+        self.payee_cb['values'] = self.payee_list
+        return
+    
+    filtered = [p for p in self.payee_list if typed in p.lower()]
+    self.payee_cb['values'] = filtered
+    self.payee_cb.event_generate('<Down>')
+
+    def update_amount_fields(self, event=None):
+        """Update formatted amount and words when amount changes"""
+        amount = self.amount_var.get()
+        formatted = self.format_amount(amount)
+        self.amount_var.set(formatted)
+        
+        words = self.amount_to_words(amount)
+        self.amount_words_var.set(words)
+        self.virement_amount_words_var.set(words)
+        self.letter_amount_words_var.set(words)
 
     def setup_virement_tab(self):
-        tab = ttk.Frame(self.notebook)
-        self.notebook.add(tab, text="Virement")
+    tab = ttk.Frame(self.notebook)
+    self.notebook.add(tab, text="Virement")
+    
+    # Fields
+    ttk.Label(tab, text="Bénéficiaire:").grid(row=0, column=0, sticky="e", padx=5, pady=5)
+    self.virement_payee_cb = ttk.Combobox(tab, textvariable=self.virement_payee_var, values=self.payee_list)
+    self.virement_payee_cb.grid(row=0, column=1, sticky="ew")
+    self.virement_payee_cb.bind('<KeyRelease>', self.filter_payees)
+    self.virement_payee_cb.bind('<<ComboboxSelected>>', self.fill_payee_details)
+    
+    ttk.Label(tab, text="Montant (#000 000,00):").grid(row=1, column=0, sticky="e", padx=5, pady=5)
+    self.virement_amount_entry = ttk.Entry(tab, textvariable=self.virement_amount_var, width=20)
+    self.virement_amount_entry.grid(row=1, column=1, sticky="w")
+    self.virement_amount_entry.bind('<FocusOut>', self.update_amount_fields)
+    
+    ttk.Label(tab, text="Montant en lettres:").grid(row=2, column=0, sticky="e", padx=5, pady=5)
+    ttk.Entry(tab, textvariable=self.virement_amount_words_var, width=40, state='readonly').grid(row=2, column=1, sticky="w")
+    
+    ttk.Label(tab, text="Type:").grid(row=3, column=0, sticky="e", padx=5, pady=5)
+    ttk.Combobox(tab, textvariable=self.virement_type_var, values=["Ordinaire", "Instantané"], width=15).grid(row=3, column=1, sticky="w")
+    
+    ttk.Label(tab, text="Motif:").grid(row=4, column=0, sticky="e", padx=5, pady=5)
+    ttk.Entry(tab, textvariable=self.virement_motif_var, width=20).grid(row=4, column=1, sticky="w")
+    
+    ttk.Label(tab, text="RIB:").grid(row=5, column=0, sticky="e", padx=5, pady=5)
+    ttk.Entry(tab, textvariable=self.virement_rib_var, width=20).grid(row=5, column=1, sticky="w")
+    
+    ttk.Label(tab, text="Banque:").grid(row=6, column=0, sticky="e", padx=5, pady=5)
+    ttk.Entry(tab, textvariable=self.virement_bank_var, width=20).grid(row=6, column=1, sticky="w")
+    
+    ttk.Label(tab, text="Ville:").grid(row=7, column=0, sticky="e", padx=5, pady=5)
+    ttk.Combobox(tab, textvariable=self.virement_city_var, values=self.cities).grid(row=7, column=1, sticky="w")
+    
+    ttk.Button(tab, text="Générer Virement", command=self.generate_virement).grid(row=8, columnspan=2, pady=10)
+    
+    # Configure grid weights
+    tab.grid_columnconfigure(1, weight=1)
+
+def fill_payee_details(self, event=None):
+    """Fill RIB, bank, and city from payee database"""
+    if self.payee_db is None:
+        return
         
-        # Fields
-        fields = [
-            ("Bénéficiaire:", "virement_payee_var"),
-            ("Montant (#000 000,00):", "virement_amount_var"),
-            ("Montant en lettres:", "virement_amount_words_var", 40),
-            ("Type:", "virement_type_var", 15),
-            ("Motif:", "virement_motif_var"),
-            ("RIB:", "virement_rib_var"),
-            ("Banque:", "virement_bank_var"),
-            ("Ville:", "virement_city_var")
-        ]
+    payee = self.virement_payee_var.get()
+    if not payee:
+        return
         
-        for i, (label, var, *extra) in enumerate(fields):
-            ttk.Label(tab, text=label).grid(row=i, column=0, sticky="e", padx=5, pady=5)
-            if var == "virement_type_var":
-                cb = ttk.Combobox(tab, textvariable=getattr(self, var), 
-                                 values=["Ordinaire", "Instantané"], width=extra[0] if extra else 20)
-                cb.grid(row=i, column=1, sticky="w")
-            else:
-                entry = ttk.Entry(tab, textvariable=getattr(self, var), width=extra[0] if extra else 20)
-                entry.grid(row=i, column=1, sticky="w")
-        
-        ttk.Button(tab, text="Générer Virement", command=self.generate_virement).grid(row=len(fields), columnspan=2, pady=10)
+    try:
+        # Find payee in database (case insensitive)
+        match = self.payee_db[self.payee_db.iloc[:, 0].str.lower() == payee.lower()]
+        if not match.empty:
+            # Assuming columns are: Payee, RIB, Bank, City
+            if len(match.columns) > 1:
+                self.virement_rib_var.set(str(match.iloc[0, 1]))
+            if len(match.columns) > 2:
+                self.virement_bank_var.set(str(match.iloc[0, 2]))
+            if len(match.columns) > 3:
+                self.virement_city_var.set(str(match.iloc[0, 3]))
+    except Exception as e:
+        print(f"Error filling payee details: {e}")
 
     def setup_letter_tab(self):
         tab = ttk.Frame(self.notebook)
         self.notebook.add(tab, text="Lettre de Change")
         
         # Fields
-        fields = [
-            ("Bénéficiaire:", "letter_payee_var"),
-            ("Montant (#000 000,00):", "letter_amount_var"),
-            ("Montant en lettres:", "letter_amount_words_var", 40),
-            ("Date d'échéance:", "letter_due_date_var"),
-            ("Ville:", "letter_city_var"),
-            ("Date d'édition:", "letter_edition_date_var"),
-            ("Libellé:", "letter_label_var")
-        ]
+        ttk.Label(tab, text="Bénéficiaire:").grid(row=0, column=0, sticky="e", padx=5, pady=5)
+        self.letter_payee_cb = ttk.Combobox(tab, textvariable=self.letter_payee_var, values=self.payee_list)
+        self.letter_payee_cb.grid(row=0, column=1, sticky="ew")
+        self.letter_payee_cb.bind('<KeyRelease>', self.filter_payees)
         
-        for i, (label, var, *extra) in enumerate(fields):
-            ttk.Label(tab, text=label).grid(row=i, column=0, sticky="e", padx=5, pady=5)
-            entry = ttk.Entry(tab, textvariable=getattr(self, var), width=extra[0] if extra else 20)
-            entry.grid(row=i, column=1, sticky="w")
+        ttk.Label(tab, text="Montant (#000 000,00):").grid(row=1, column=0, sticky="e", padx=5, pady=5)
+        self.letter_amount_entry = ttk.Entry(tab, textvariable=self.letter_amount_var, width=20)
+        self.letter_amount_entry.grid(row=1, column=1, sticky="w")
+        self.letter_amount_entry.bind('<FocusOut>', self.update_amount_fields)
         
-        ttk.Button(tab, text="Générer Lettre", command=self.generate_letter).grid(row=len(fields), columnspan=2, pady=10)
+        ttk.Label(tab, text="Montant en lettres:").grid(row=2, column=0, sticky="e", padx=5, pady=5)
+        ttk.Entry(tab, textvariable=self.letter_amount_words_var, width=40, state='readonly').grid(row=2, column=1, sticky="w")
+        
+        ttk.Label(tab, text="Date d'échéance:").grid(row=3, column=0, sticky="e", padx=5, pady=5)
+        ttk.Entry(tab, textvariable=self.letter_due_date_var, width=20).grid(row=3, column=1, sticky="w")
+        
+        ttk.Label(tab, text="Ville:").grid(row=4, column=0, sticky="e", padx=5, pady=5)
+        ttk.Combobox(tab, textvariable=self.letter_city_var, values=self.cities).grid(row=4, column=1, sticky="w")
+        
+        ttk.Label(tab, text="Date d'édition:").grid(row=5, column=0, sticky="e", padx=5, pady=5)
+        ttk.Entry(tab, textvariable=self.letter_edition_date_var, width=20).grid(row=5, column=1, sticky="w")
+        
+        ttk.Label(tab, text="Libellé:").grid(row=6, column=0, sticky="e", padx=5, pady=5)
+        ttk.Entry(tab, textvariable=self.letter_label_var, width=40).grid(row=6, column=1, sticky="w")
+        
+        ttk.Button(tab, text="Générer Lettre", command=self.generate_letter).grid(row=7, columnspan=2, pady=10)
+        
+        # Configure grid weights
+        tab.grid_columnconfigure(1, weight=1)
+        
+        # Set default edition date
+        self.letter_edition_date_var.set(datetime.now().strftime("%d/%m/%Y"))
 
     def setup_settings_tab(self):
         tab = ttk.Frame(self.notebook)
@@ -171,7 +258,80 @@ class ChequeVirementApp:
         
         # Font Preview
         self.setup_font_preview(tab)
+    def import_payee_db(self):
+    path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx *.xls")])
+    if path:
+        try:
+            self.payee_db = pd.read_excel(path)
+            self.payee_list = self.payee_db.iloc[:, 0].tolist()  # First column as payee names
+            self.payee_cb['values'] = self.payee_list
+            self.save_config('payee_db_path', path)
+            messagebox.showinfo("Succès", f"Base chargée: {len(self.payee_db)} bénéficiaires")
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Échec du chargement:\n{str(e)}")
+    
+    def format_amount(self, amount_str):
+    """Format amount as #000 000,00"""
+    try:
+        # Remove any existing formatting
+        clean_amount = amount_str.replace('#', '').replace(' ', '').replace(',', '.')
+        amount = float(clean_amount)
+        
+        # Format with thousands separator and 2 decimals
+        formatted = f"#{amount:,.2f}".replace(".", "X").replace(",", " ").replace("X", ",")
+        return formatted
+    except:
+        return amount_str
 
+    def amount_to_words(self, amount_str):
+        """Convert numeric amount to French words"""
+        try:
+            clean_amount = amount_str.replace('#', '').replace(' ', '').replace(',', '.')
+            amount = float(clean_amount)
+            
+            units = ["", "un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf"]
+            teens = ["dix", "onze", "douze", "treize", "quatorze", "quinze", "seize", 
+                    "dix-sept", "dix-huit", "dix-neuf"]
+            tens = ["", "dix", "vingt", "trente", "quarante", "cinquante", 
+                   "soixante", "soixante", "quatre-vingt", "quatre-vingt"]
+            
+            def convert_less_than_one_thousand(n):
+                if n < 10:
+                    return units[n]
+                elif n < 20:
+                    return teens[n - 10]
+                elif n < 100:
+                    if n % 10 == 0:
+                        return tens[n // 10]
+                    elif n // 10 == 7 or n // 10 == 9:
+                        return tens[n // 10] + "-" + teens[n % 10]
+                    else:
+                        return tens[n // 10] + "-" + units[n % 10]
+                else:
+                    if n % 100 == 0:
+                        return units[n // 100] + " cents"
+                    else:
+                        return units[n // 100] + " cent " + convert_less_than_one_thousand(n % 100)
+            
+            dirhams = int(amount)
+            centimes = int(round(amount % 1 * 100))
+            
+            if dirhams == 0:
+                words = "zéro"
+            elif dirhams == 1:
+                words = "un dirham"
+            else:
+                words = convert_less_than_one_thousand(dirhams) + " dirhams"
+                
+            if centimes > 0:
+                if centimes == 1:
+                    words += " et un centime"
+                else:
+                    words += " et " + convert_less_than_one_thousand(centimes) + " centimes"
+                    
+            return words.capitalize()
+        except:
+            return ""
     # ----------------------------
     # DOCUMENT GENERATION
     # ----------------------------
