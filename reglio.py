@@ -382,17 +382,17 @@ class ChequeVirementApp:
                 messagebox.showerror("Erreur", f"Échec du chargement:\n{str(e)}")
     
     def format_amount(self, amount_str):
-    """Format amount as #000 000,00"""
-    try:
-        # Remove any existing formatting
-        clean_amount = amount_str.replace('#', '').replace(' ', '').replace(',', '.')
-        amount = float(clean_amount)
-        
-        # Format with thousands separator and 2 decimals
-        formatted = f"#{amount:,.2f}".replace(".", "X").replace(",", " ").replace("X", ",")
-        return formatted
-    except:
-        return amount_str
+        """Format amount as #000 000,00"""
+        try:
+            # Remove any existing formatting
+            clean_amount = amount_str.replace('#', '').replace(' ', '').replace(',', '.')
+            amount = float(clean_amount)
+            
+            # Format with thousands separator and 2 decimals
+            formatted = f"#{amount:,.2f}".replace(".", "X").replace(",", " ").replace("X", ",")
+            return formatted
+        except:
+            return amount_str
 
     def amount_to_words(self, amount_str):
         """Convert numeric amount to French words"""
