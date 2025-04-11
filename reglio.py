@@ -20,7 +20,14 @@ class ChequeVirementApp:
         self.root = root
         self.root.title("Générateur de Documents Bancaires")
         
-        # Initialize all StringVars FIRST
+        # Initialize data structures first
+        self.payee_db = None
+        self.payee_list = []  # Initialize empty payee list
+        self.virements_db_path = None
+        self.template_path = None
+        self.cities = ["Témara", "Rabat", "Casablanca", "Autre"]
+        
+        # Initialize all StringVars
         self.initialize_variables()
         
         # Then setup UI and other components
@@ -28,30 +35,18 @@ class ChequeVirementApp:
         self.load_config()
         self.register_fonts()
         
-        # Data storage
-        self.payee_db = None
-        self.payee_list = []  # Store payee names for combobox  # ADD THIS LINE
-        self.virements_db_path = None
-        self.template_path = None
-        
         # Layout configurations
         self.cheque_layout = self.load_layout_config("cheque")
         self.letter_layout = self.load_layout_config("letter")
         self.virement_layout = self.load_layout_config("virement")
-        
-        # Default cities  # ADD THESE LINES
-        self.cities = ["Témara", "Rabat", "Casablanca", "Autre"]
-        self.city_var.set("Témara")
-        self.virement_city_var.set("Témara")
-        self.letter_city_var.set("Témara")
 
     def initialize_variables(self):
-        """Initialize all Tkinter variables before UI setup"""
+        """Initialize all Tkinter variables"""
         # Cheque Tab Variables
         self.payee_var = tk.StringVar()
         self.amount_var = tk.StringVar()
         self.amount_words_var = tk.StringVar()
-        self.city_var = tk.StringVar()
+        self.city_var = tk.StringVar(value="Témara")
         self.date_var = tk.StringVar(value=datetime.now().strftime("%d/%m/%Y"))
         
         # Virement Tab Variables
@@ -62,14 +57,14 @@ class ChequeVirementApp:
         self.virement_motif_var = tk.StringVar()
         self.virement_rib_var = tk.StringVar()
         self.virement_bank_var = tk.StringVar()
-        self.virement_city_var = tk.StringVar()
+        self.virement_city_var = tk.StringVar(value="Témara")
         
         # Lettre de Change Tab Variables
         self.letter_payee_var = tk.StringVar()
         self.letter_amount_var = tk.StringVar()
         self.letter_amount_words_var = tk.StringVar()
         self.letter_due_date_var = tk.StringVar()
-        self.letter_city_var = tk.StringVar()
+        self.letter_city_var = tk.StringVar(value="Témara")
         self.letter_edition_date_var = tk.StringVar(value=datetime.now().strftime("%d/%m/%Y"))
         self.letter_label_var = tk.StringVar()
         
@@ -77,114 +72,6 @@ class ChequeVirementApp:
         self.font_var = tk.StringVar(value="Arial")
         self.size_var = tk.IntVar(value=10)
         self.preview_text_var = tk.StringVar(value="Exemple de texte")
-
-    def format_amount(self, amount_str):
-        """Format amount as #000 000,00"""
-        try:
-            # Remove any existing formatting
-            clean_amount = amount_str.replace('#', '').replace(' ', '').replace(',', '.')
-            amount = float(clean_amount)
-            
-            # Format with thousands separator and 2 decimals
-            formatted = f"#{amount:,.2f}".replace(".", "X").replace(",", " ").replace("X", ",")
-            return formatted
-        except:
-            return amount_str
-
-    def amount_to_words(self, amount_str):
-        """Convert numeric amount to French words"""
-        try:
-            clean_amount = amount_str.replace('#', '').replace(' ', '').replace(',', '.')
-            amount = float(clean_amount)
-            
-            units = ["", "un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf"]
-            teens = ["dix", "onze", "douze", "treize", "quatorze", "quinze", "seize", 
-                    "dix-sept", "dix-huit", "dix-neuf"]
-            tens = ["", "dix", "vingt", "trente", "quarante", "cinquante", 
-                   "soixante", "soixante", "quatre-vingt", "quatre-vingt"]
-        
-            def convert_less_than_one_thousand(n):
-                if n < 10:
-                    return units[n]
-                elif n < 20:
-                    return teens[n - 10]
-                elif n < 100:
-                    if n % 10 == 0:
-                        return tens[n // 10]
-                    elif n // 10 == 7 or n // 10 == 9:
-                        return tens[n // 10] + "-" + teens[n % 10]
-                    else:
-                        return tens[n // 10] + "-" + units[n % 10]
-                else:
-                    if n % 100 == 0:
-                        return units[n // 100] + " cents"
-                    else:
-                        return units[n // 100] + " cent " + convert_less_than_one_thousand(n % 100)
-            
-            dirhams = int(amount)
-            centimes = int(round(amount % 1 * 100))
-        
-            if dirhams == 0:
-                words = "zéro"
-            elif dirhams == 1:
-                words = "un dirham"
-            else:
-                words = convert_less_than_one_thousand(dirhams) + " dirhams"
-                
-            if centimes > 0:
-                if centimes == 1:
-                    words += " et un centime"
-                else:
-                    words += " et " + convert_less_than_one_thousand(centimes) + " centimes"
-                    
-            return words.capitalize()
-        except:
-            return ""
-    
-    def filter_payees(self, event=None):
-        """Filter payees based on combobox input"""
-        typed = self.payee_var.get().lower()
-        if not typed:
-            self.payee_cb['values'] = self.payee_list
-            return
-        
-        filtered = [p for p in self.payee_list if typed in p.lower()]
-        self.payee_cb['values'] = filtered
-        self.payee_cb.event_generate('<Down>')
-    
-    def update_amount_fields(self, event=None):
-        """Update formatted amount and words when amount changes"""
-        amount = self.amount_var.get()
-        formatted = self.format_amount(amount)
-        self.amount_var.set(formatted)
-        
-        words = self.amount_to_words(amount)
-        self.amount_words_var.set(words)
-        self.virement_amount_words_var.set(words)
-        self.letter_amount_words_var.set(words)
-    
-    def fill_payee_details(self, event=None):
-        """Fill RIB, bank, and city from payee database"""
-        if self.payee_db is None:
-            return
-            
-        payee = self.virement_payee_var.get()
-        if not payee:
-            return
-            
-        try:
-            # Find payee in database (case insensitive)
-            match = self.payee_db[self.payee_db.iloc[:, 0].str.lower() == payee.lower()]
-            if not match.empty:
-                # Assuming columns are: Payee, RIB, Bank, City
-                if len(match.columns) > 1:
-                    self.virement_rib_var.set(str(match.iloc[0, 1]))
-                if len(match.columns) > 2:
-                    self.virement_bank_var.set(str(match.iloc[0, 2]))
-                if len(match.columns) > 3:
-                    self.virement_city_var.set(str(match.iloc[0, 3]))
-        except Exception as e:
-            print(f"Error filling payee details: {e}")
 
     # ----------------------------
     # UI SETUP
@@ -234,28 +121,6 @@ class ChequeVirementApp:
         # Configure grid weights
         tab.grid_columnconfigure(1, weight=1)
 
-    def filter_payees(self, event=None):
-        """Filter payees based on combobox input"""
-        typed = self.payee_var.get().lower()
-        if not typed:
-            self.payee_cb['values'] = self.payee_list
-            return
-    
-        filtered = [p for p in self.payee_list if typed in p.lower()]
-        self.payee_cb['values'] = filtered
-        self.payee_cb.event_generate('<Down>')
-
-    def update_amount_fields(self, event=None):
-        """Update formatted amount and words when amount changes"""
-        amount = self.amount_var.get()
-        formatted = self.format_amount(amount)
-        self.amount_var.set(formatted)
-        
-        words = self.amount_to_words(amount)
-        self.amount_words_var.set(words)
-        self.virement_amount_words_var.set(words)
-        self.letter_amount_words_var.set(words)
-
     def setup_virement_tab(self):
         tab = ttk.Frame(self.notebook)
         self.notebook.add(tab, text="Virement")
@@ -295,29 +160,6 @@ class ChequeVirementApp:
         # Configure grid weights
         tab.grid_columnconfigure(1, weight=1)
 
-    def fill_payee_details(self, event=None):
-        """Fill RIB, bank, and city from payee database"""
-        if self.payee_db is None:
-            return
-            
-        payee = self.virement_payee_var.get()
-        if not payee:
-            return
-            
-        try:
-            # Find payee in database (case insensitive)
-            match = self.payee_db[self.payee_db.iloc[:, 0].str.lower() == payee.lower()]
-            if not match.empty:
-                # Assuming columns are: Payee, RIB, Bank, City
-                if len(match.columns) > 1:
-                    self.virement_rib_var.set(str(match.iloc[0, 1]))
-                if len(match.columns) > 2:
-                    self.virement_bank_var.set(str(match.iloc[0, 2]))
-                if len(match.columns) > 3:
-                    self.virement_city_var.set(str(match.iloc[0, 3]))
-        except Exception as e:
-            print(f"Error filling payee details: {e}")
-
     def setup_letter_tab(self):
         tab = ttk.Frame(self.notebook)
         self.notebook.add(tab, text="Lettre de Change")
@@ -352,9 +194,6 @@ class ChequeVirementApp:
         
         # Configure grid weights
         tab.grid_columnconfigure(1, weight=1)
-        
-        # Set default edition date
-        self.letter_edition_date_var.set(datetime.now().strftime("%d/%m/%Y"))
 
     def setup_settings_tab(self):
         tab = ttk.Frame(self.notebook)
@@ -367,82 +206,7 @@ class ChequeVirementApp:
         
         # Font Preview
         self.setup_font_preview(tab)
-    def import_payee_db(self):
-        path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx *.xls")])
-        if path:
-            try:
-                self.payee_db = pd.read_excel(path)
-                self.payee_list = self.payee_db.iloc[:, 0].tolist()  # First column as payee names
-                self.payee_cb['values'] = self.payee_list
-                self.virement_payee_cb['values'] = self.payee_list
-                self.letter_payee_cb['values'] = self.payee_list
-                self.save_config('payee_db_path', path)
-                messagebox.showinfo("Succès", f"Base chargée: {len(self.payee_db)} bénéficiaires")
-            except Exception as e:
-                messagebox.showerror("Erreur", f"Échec du chargement:\n{str(e)}")
-    
-    def format_amount(self, amount_str):
-        """Format amount as #000 000,00"""
-        try:
-            # Remove any existing formatting
-            clean_amount = amount_str.replace('#', '').replace(' ', '').replace(',', '.')
-            amount = float(clean_amount)
-            
-            # Format with thousands separator and 2 decimals
-            formatted = f"#{amount:,.2f}".replace(".", "X").replace(",", " ").replace("X", ",")
-            return formatted
-        except:
-            return amount_str
 
-    def amount_to_words(self, amount_str):
-        """Convert numeric amount to French words"""
-        try:
-            clean_amount = amount_str.replace('#', '').replace(' ', '').replace(',', '.')
-            amount = float(clean_amount)
-            
-            units = ["", "un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf"]
-            teens = ["dix", "onze", "douze", "treize", "quatorze", "quinze", "seize", 
-                    "dix-sept", "dix-huit", "dix-neuf"]
-            tens = ["", "dix", "vingt", "trente", "quarante", "cinquante", 
-                   "soixante", "soixante", "quatre-vingt", "quatre-vingt"]
-            
-            def convert_less_than_one_thousand(n):
-                if n < 10:
-                    return units[n]
-                elif n < 20:
-                    return teens[n - 10]
-                elif n < 100:
-                    if n % 10 == 0:
-                        return tens[n // 10]
-                    elif n // 10 == 7 or n // 10 == 9:
-                        return tens[n // 10] + "-" + teens[n % 10]
-                    else:
-                        return tens[n // 10] + "-" + units[n % 10]
-                else:
-                    if n % 100 == 0:
-                        return units[n // 100] + " cents"
-                    else:
-                        return units[n // 100] + " cent " + convert_less_than_one_thousand(n % 100)
-            
-            dirhams = int(amount)
-            centimes = int(round(amount % 1 * 100))
-            
-            if dirhams == 0:
-                words = "zéro"
-            elif dirhams == 1:
-                words = "un dirham"
-            else:
-                words = convert_less_than_one_thousand(dirhams) + " dirhams"
-                
-            if centimes > 0:
-                if centimes == 1:
-                    words += " et un centime"
-                else:
-                    words += " et " + convert_less_than_one_thousand(centimes) + " centimes"
-                    
-            return words.capitalize()
-        except:
-            return ""
     # ----------------------------
     # DOCUMENT GENERATION
     # ----------------------------
@@ -484,8 +248,9 @@ class ChequeVirementApp:
 
     def generate_virement(self):
         try:
-             # Auto-format the amount
+            # Auto-format the amount
             self.update_amount_fields()
+            
             # Validate fields
             if not all([self.virement_payee_var.get(), self.virement_amount_var.get()]):
                 messagebox.showerror("Erreur", "Bénéficiaire et montant sont obligatoires!")
@@ -646,6 +411,114 @@ class ChequeVirementApp:
         except Exception as e:
             messagebox.showwarning("Attention", f"Virement non enregistré:\n{str(e)}")
 
+    def format_amount(self, amount_str):
+        """Format amount as #000 000,00"""
+        try:
+            # Remove any existing formatting
+            clean_amount = amount_str.replace('#', '').replace(' ', '').replace(',', '.')
+            amount = float(clean_amount)
+            
+            # Format with thousands separator and 2 decimals
+            formatted = f"#{amount:,.2f}".replace(".", "X").replace(",", " ").replace("X", ",")
+            return formatted
+        except:
+            return amount_str
+
+    def amount_to_words(self, amount_str):
+        """Convert numeric amount to French words"""
+        try:
+            clean_amount = amount_str.replace('#', '').replace(' ', '').replace(',', '.')
+            amount = float(clean_amount)
+            
+            units = ["", "un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf"]
+            teens = ["dix", "onze", "douze", "treize", "quatorze", "quinze", "seize", 
+                    "dix-sept", "dix-huit", "dix-neuf"]
+            tens = ["", "dix", "vingt", "trente", "quarante", "cinquante", 
+                   "soixante", "soixante", "quatre-vingt", "quatre-vingt"]
+            
+            def convert_less_than_one_thousand(n):
+                if n < 10:
+                    return units[n]
+                elif n < 20:
+                    return teens[n - 10]
+                elif n < 100:
+                    if n % 10 == 0:
+                        return tens[n // 10]
+                    elif n // 10 == 7 or n // 10 == 9:
+                        return tens[n // 10] + "-" + teens[n % 10]
+                    else:
+                        return tens[n // 10] + "-" + units[n % 10]
+                else:
+                    if n % 100 == 0:
+                        return units[n // 100] + " cents"
+                    else:
+                        return units[n // 100] + " cent " + convert_less_than_one_thousand(n % 100)
+            
+            dirhams = int(amount)
+            centimes = int(round(amount % 1 * 100))
+            
+            if dirhams == 0:
+                words = "zéro"
+            elif dirhams == 1:
+                words = "un dirham"
+            else:
+                words = convert_less_than_one_thousand(dirhams) + " dirhams"
+                
+            if centimes > 0:
+                if centimes == 1:
+                    words += " et un centime"
+                else:
+                    words += " et " + convert_less_than_one_thousand(centimes) + " centimes"
+                    
+            return words.capitalize()
+        except:
+            return ""
+
+    def filter_payees(self, event=None):
+        """Filter payees based on combobox input"""
+        typed = self.payee_var.get().lower()
+        if not typed:
+            self.payee_cb['values'] = self.payee_list
+            return
+        
+        filtered = [p for p in self.payee_list if typed in p.lower()]
+        self.payee_cb['values'] = filtered
+        self.payee_cb.event_generate('<Down>')
+
+    def update_amount_fields(self, event=None):
+        """Update formatted amount and words when amount changes"""
+        amount = self.amount_var.get()
+        formatted = self.format_amount(amount)
+        self.amount_var.set(formatted)
+        
+        words = self.amount_to_words(amount)
+        self.amount_words_var.set(words)
+        self.virement_amount_words_var.set(words)
+        self.letter_amount_words_var.set(words)
+
+    def fill_payee_details(self, event=None):
+        """Fill RIB, bank, and city from payee database"""
+        if self.payee_db is None:
+            return
+            
+        payee = self.virement_payee_var.get()
+        if not payee:
+            return
+            
+        try:
+            # Find payee in database (case insensitive)
+            match = self.payee_db[self.payee_db.iloc[:, 0].str.lower() == payee.lower()]
+            if not match.empty:
+                # Assuming columns are: Payee, RIB, Bank, City
+                if len(match.columns) > 1:
+                    self.virement_rib_var.set(str(match.iloc[0, 1]))
+                if len(match.columns) > 2:
+                    self.virement_bank_var.set(str(match.iloc[0, 2]))
+                if len(match.columns) > 3:
+                    self.virement_city_var.set(str(match.iloc[0, 3]))
+        except Exception as e:
+            print(f"Error filling payee details: {e}")
+
     # ----------------------------
     # INITIALIZATION & UTILITIES
     # ----------------------------
@@ -659,8 +532,6 @@ class ChequeVirementApp:
 
     def load_layout_config(self, doc_type):
         """Load layout configuration for document type"""
-        # In a real implementation, this would load from your Excel config
-        # This is a simplified version with sample coordinates
         if doc_type == "cheque":
             return {
                 "payee": {"x": 35, "y": 45, "max_width": 130, "font": "Arial", "size": 10, "align": "left"},
@@ -766,6 +637,11 @@ class ChequeVirementApp:
         except:
             return Image.new('RGB', (400, 100), 'white')
 
+    # ----------------------------
+    # FILE OPERATIONS
+    # ----------------------------
+    def import_payee_db(self):
+        path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx *.xls")])
     # ----------------------------
     # FILE OPERATIONS
     # ----------------------------
