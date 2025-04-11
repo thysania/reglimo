@@ -650,6 +650,11 @@ class ChequeVirementApp:
         if path:
             try:
                 self.payee_db = pd.read_excel(path)
+                self.payee_list = self.payee_db.iloc[:, 0].tolist()  # First column as payee names
+                # Update all comboboxes with the new payee list
+                self.payee_cb['values'] = self.payee_list
+                self.virement_payee_cb['values'] = self.payee_list
+                self.letter_payee_cb['values'] = self.payee_list
                 self.save_config('payee_db_path', path)
                 messagebox.showinfo("Succès", f"Base chargée: {len(self.payee_db)} bénéficiaires")
             except Exception as e:
@@ -673,37 +678,27 @@ class ChequeVirementApp:
     # CONFIGURATION
     # ----------------------------
     def load_config(self):
-        """Initialize all StringVars and load config"""
-        # Initialize variables
-        self.payee_var = tk.StringVar()
-        self.amount_var = tk.StringVar()
-        self.amount_words_var = tk.StringVar()
-        self.city_var = tk.StringVar()
-        self.date_var = tk.StringVar(value=datetime.now().strftime("%d/%m/%Y"))
-        
-        # Virement variables
-        self.virement_payee_var = tk.StringVar()
-        self.virement_amount_var = tk.StringVar()
-        self.virement_amount_words_var = tk.StringVar()
-        self.virement_type_var = tk.StringVar(value="Ordinaire")
-        self.virement_motif_var = tk.StringVar()
-        self.virement_rib_var = tk.StringVar()
-        self.virement_bank_var = tk.StringVar()
-        self.virement_city_var = tk.StringVar()
-        
-        # Lettre de change variables
-        self.letter_payee_var = tk.StringVar()
-        self.letter_amount_var = tk.StringVar()
-        self.letter_amount_words_var = tk.StringVar()
-        self.letter_due_date_var = tk.StringVar()
-        self.letter_city_var = tk.StringVar()
-        self.letter_edition_date_var = tk.StringVar(value=datetime.now().strftime("%d/%m/%Y"))
-        self.letter_label_var = tk.StringVar()
+        """Load configuration (simplified)"""
+        # In a real implementation, this would load from a config file
+        pass
 
     def save_config(self, key, value):
         """Save configuration (simplified)"""
         # In a real implementation, this would save to a config file
         pass
+
+    def get_layout_config(self, field_name):
+        """Get layout configuration for a specific field"""
+        # Check cheque layout first
+        if field_name in self.cheque_layout:
+            return self.cheque_layout[field_name]
+        # Then check virement layout
+        elif field_name in self.virement_layout:
+            return self.virement_layout[field_name]
+        # Finally check letter layout
+        elif field_name in self.letter_layout:
+            return self.letter_layout[field_name]
+        return None
 
 # ----------------------------
 # RUN THE APPLICATION
