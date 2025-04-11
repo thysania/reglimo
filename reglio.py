@@ -235,15 +235,15 @@ class ChequeVirementApp:
         tab.grid_columnconfigure(1, weight=1)
 
     def filter_payees(self, event=None):
-    """Filter payees based on combobox input"""
-    typed = self.payee_var.get().lower()
-    if not typed:
-        self.payee_cb['values'] = self.payee_list
-        return
+        """Filter payees based on combobox input"""
+        typed = self.payee_var.get().lower()
+        if not typed:
+            self.payee_cb['values'] = self.payee_list
+            return
     
-    filtered = [p for p in self.payee_list if typed in p.lower()]
-    self.payee_cb['values'] = filtered
-    self.payee_cb.event_generate('<Down>')
+        filtered = [p for p in self.payee_list if typed in p.lower()]
+        self.payee_cb['values'] = filtered
+        self.payee_cb.event_generate('<Down>')
 
     def update_amount_fields(self, event=None):
         """Update formatted amount and words when amount changes"""
