@@ -21,7 +21,6 @@ class ChequeVirementApp:
         self.root = root
         self.root.title("Générateur de Documents Bancaires")
         
-        # Set French locale for number formatting
         try:
             locale.setlocale(locale.LC_ALL, 'fr_FR.UTF-8')
         except:
@@ -350,9 +349,17 @@ class ChequeVirementApp:
     def amount_to_words(self, amount_str):
         """Convert numeric amount to French words"""
         try:
-            # Remove formatting characters
+            # Remove formatting characters and handle empty input
+            if not amount_str:
+                return ""
+                
             clean_amount = amount_str.replace('#', '').replace(' ', '').replace(',', '.')
-            amount = float(clean_amount)
+            
+            # Handle cases where amount is not a valid number
+            try:
+                amount = float(clean_amount)
+            except ValueError:
+                return ""
             
             # Handle zero case
             if amount == 0:
@@ -408,16 +415,74 @@ class ChequeVirementApp:
             print(f"Error converting amount to words: {e}")
             return ""
 
+    def get_layout_config(self, field_name):
+        """Get layout configuration for a specific field"""
+        # First check cheque layout
+        if field_name in self.cheque_layout:
+            return self.cheque_layout[field_name]
+        # Then check virement layout
+        elif field_name in self.virement_layout:
+            return self.virement_layout[field_name]
+        # Finally check letter layout
+        elif field_name in self.letter_layout:
+            return self.letter_layout[field_name]
+        return None
+
+    def load_layout_config(self, doc_type):
+        """Load layout configuration for document type"""
+        if doc_type == "cheque":
+            return {
+                "payee": {"x": 35, "y": 45, "max_width": 130, "font": "Arial", "size": 10, "align": "left"},
+                "amount": {"x": 130, "y": 73, "max_width": 31, "font": "Arial", "size": 10, "align": "left"},
+                "amount in letters line 1": {"x": 40, "y": 56, "max_width": 100, "font": "Arial", "size": 10, "align": "center"},
+                "amount in letters line 2": {"x": 10, "y": 51, "max_width": 160, "font": "Arial", "size": 10, "align": "center"},
+                "ville": {"x": 75, "y": 38, "max_width": 35, "font": "Arial", "size": 10, "align": "left"},
+                "date": {"x": 130, "y": 38, "max_width": 30, "font": "Arial", "size": 10, "align": "left"}
+            }
+        elif doc_type == "letter":
+            return {
+                "amount": {"x": 155, "y": 84, "max_width": 40, "font": "Arial", "size": 10, "align": "center"},
+                "amount in letters line 1": {"x": 148, "y": 62, "max_width": 48, "font": "Arial", "size": 10, "align": "left"},
+                "amount in letters line 2": {"x": 148, "y": 58, "max_width": 48, "font": "Arial", "size": 10, "align": "left"},
+                "amount in letters line 3": {"x": 148, "y": 54, "max_width": 48, "font": "Arial", "size": 10, "align": "left"},
+                "payee 1": {"x": 85, "y": 71, "max_width": 110, "font": "Arial", "size": 10, "align": "left"},
+                "payee 2": {"x": 7, "y": 69, "max_width": 55, "font": "Arial", "size": 10, "align": "left"},
+                "due date": {"x": 155, "y": 94, "max_width": 40, "font": "Arial", "size": 10, "align": "center"},
+                "motif": {"x": 85, "y": 56, "max_width": 55, "font": "Arial", "size": 10, "align": "left"},
+                "city and edition date": {"x": 85, "y": 62, "max_width": 55, "font": "Arial", "size": 10, "align": "left"}
+            }
+        elif doc_type == "virement":
+            return {
+                "virement_num": {"x": 50, "y": 250, "max_width": 80, "font": "Arial-Bold", "size": 12, "align": "left"},
+                "amount": {"x": 50, "y": 230, "max_width": 60, "font": "Arial", "size": 12, "align": "left"},
+                "amount in letters line 1": {"x": 50, "y": 210, "max_width": 140, "font": "Arial", "size": 10, "align": "left"},
+                "amount in letters line 2": {"x": 50, "y": 200, "max_width": 140, "font": "Arial", "size": 10, "align": "left"},
+                "payee": {"x": 50, "y": 180, "max_width": 120, "font": "Arial", "size": 10, "align": "left"},
+                "type": {"x": 50, "y": 160, "max_width": 60, "font": "Arial", "size": 10, "align": "left"},
+                "motif": {"x": 50, "y": 140, "max_width": 120, "font": "Arial", "size": 10, "align": "left"},
+                "rib": {"x": 50, "y": 120, "max_width": 100, "font": "Arial", "size": 10, "align": "left"},
+                "bank": {"x": 50, "y": 100, "max_width": 100, "font": "Arial", "size": 10, "align": "left"},
+                "city": {"x": 50, "y": 80, "max_width": 80, "font": "Arial", "size": 10, "align": "left"}
+            }
+        return {}
+
     def update_amount_fields(self, event=None):
         """Update formatted amount and words when amount changes"""
-        amount = self.amount_var.get()
-        formatted = self.format_amount(amount)
-        self.amount_var.set(formatted)
-        
-        words = self.amount_to_words(amount)
-        self.amount_words_var.set(words)
-        self.virement_amount_words_var.set(words)
-        self.letter_amount_words_var.set(words)
+        try:
+            amount = self.amount_var.get()
+            if not amount:
+                return
+                
+            formatted = self.format_amount(amount)
+            self.amount_var.set(formatted)
+            
+            words = self.amount_to_words(amount)
+            if words:  # Only update if conversion succeeded
+                self.amount_words_var.set(words)
+                self.virement_amount_words_var.set(words)
+                self.letter_amount_words_var.set(words)
+        except Exception as e:
+            print(f"Error updating amount fields: {e}")
 
     def generate_cheque(self):
         """Generate cheque PDF and show preview"""
